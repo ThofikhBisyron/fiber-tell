@@ -21,7 +21,7 @@ func NewAuthController(
 	}
 }
 
-func (c AuthController) RequestEmailOtp(
+func (c *AuthController) RequestEmailOtp(
 	ctx fiber.Ctx,
 ) error {
 	var input dtos.RequestEmailOTP
@@ -79,7 +79,7 @@ func (c *AuthController) VerifyEmailOtp(
 		})
 	}
 
-	err := c.authService.VerifyOtp(
+	result, err := c.authService.VerifyOtp(
 		ctx.Context(),
 		input.Email,
 		input.Code,
@@ -91,7 +91,28 @@ func (c *AuthController) VerifyEmailOtp(
 		})
 	}
 
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    result.AccessToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   15 * 60,
+	})
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+	})
+
 	return ctx.JSON(fiber.Map{
-		"message": "Login Successful",
+		"message": "Login successful",
+		"user":    result.User,
 	})
 }

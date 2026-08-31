@@ -12,6 +12,7 @@ import (
 func AuthRouters(
 	rg fiber.Router,
 	db *pgxpool.Pool,
+	jwtService *services.JwtService,
 ) {
 
 	userRepository := repositories.NewUserRepository(db)
@@ -24,6 +25,7 @@ func AuthRouters(
 		userRepository,
 		emailOtpRepository,
 		emailService,
+		jwtService,
 	)
 
 	authController := controllers.NewAuthController(

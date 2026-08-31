@@ -6,25 +6,34 @@ import (
 	"math/rand"
 	"strings"
 	"tell-be/lib"
+	"tell-be/models"
 	"tell-be/repositories"
 	"time"
 )
 
+type LoginResult struct {
+	User         models.User
+	AccessToken  string
+	RefreshToken string
+}
 type AuthService struct {
 	userRepo     *repositories.UserRepo
 	emailOtpRepo *repositories.OTPRepo
 	emailService *EmailService
+	jwtService   *JwtService
 }
 
 func NewAuthService(
 	userRepo *repositories.UserRepo,
 	emailOtpRepo *repositories.OTPRepo,
 	emailService *EmailService,
+	jwtService *JwtService,
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
 		emailOtpRepo: emailOtpRepo,
 		emailService: emailService,
+		jwtService:   jwtService,
 	}
 }
 
@@ -79,7 +88,7 @@ func (s *AuthService) VerifyOtp(
 	ctx context.Context,
 	email string,
 	code string,
-) error {
+) (*LoginResult, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 
 	otp, err := s.emailOtpRepo.FindOtpByEmail(
@@ -88,19 +97,19 @@ func (s *AuthService) VerifyOtp(
 	)
 
 	if err != nil {
-		return fmt.Errorf("Otp Not Found")
+		return nil, fmt.Errorf("Otp Not Found")
 	}
 
 	if time.Now().After(otp.Expires_at) {
 		_ = s.emailOtpRepo.DeleteOtpById(ctx, otp.Id)
 
-		return fmt.Errorf("otp expired, please send code again")
+		return nil, fmt.Errorf("otp expired, please send code again")
 	}
 
 	if otp.Attempts >= 5 {
 		_ = s.emailOtpRepo.DeleteOtpById(ctx, otp.Id)
 
-		return fmt.Errorf("too many attempts")
+		return nil, fmt.Errorf("too many attempts")
 	}
 
 	if !lib.VerifyPassword(code, otp.Code_hash) {
@@ -108,17 +117,17 @@ func (s *AuthService) VerifyOtp(
 			ctx,
 			int(otp.Id),
 		); err != nil {
-			return err
+			return nil, err
 		}
 
-		return fmt.Errorf("Invalid Otp")
+		return nil, fmt.Errorf("Invalid Otp")
 	}
 
 	if err := s.emailOtpRepo.DeleteOtpById(
 		ctx,
 		otp.Id,
 	); err != nil {
-		return err
+		return nil, err
 	}
 
 	user, err := s.userRepo.FindUserByEmail(
@@ -133,15 +142,29 @@ func (s *AuthService) VerifyOtp(
 		)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	fmt.Println("Login user:", user.Id)
 
+	accessToken, err := s.jwtService.GenerateAccessToken(user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginResult{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 	// TODO:
 	// Generate JWT access token
 	// Generate JWT refresh token
 
-	return nil
 }
