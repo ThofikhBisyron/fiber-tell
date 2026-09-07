@@ -73,3 +73,30 @@ func (r *UserRepo) CreateUser(ctx context.Context, email string) (models.User, e
 
 	return user, nil
 }
+
+func (r *UserRepo) FindUserById(
+	ctx context.Context,
+	id int64,
+) (models.User, error) {
+
+	var user models.User
+
+	err := r.db.QueryRow(
+		ctx,
+		`SELECT
+		id,
+		email
+		FROM users
+		WHERE id = $1
+		`, id,
+	).Scan(
+		&user.Id,
+		&user.Email,
+	)
+
+	if err != nil {
+		return models.User{}, err
+	}
+
+	return user, nil
+}

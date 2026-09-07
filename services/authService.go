@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
 	"tell-be/lib"
 	"tell-be/models"
@@ -167,4 +168,46 @@ func (s *AuthService) VerifyOtp(
 	// Generate JWT access token
 	// Generate JWT refresh token
 
+}
+
+func (s *AuthService) RefreshToken(
+	ctx context.Context,
+	refreshToken string,
+) (*LoginResult, error) {
+	claims, err := s.jwtService.ValidateRefreshToken(refreshToken)
+
+	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token")
+	}
+
+	userIDString, ok := claims["user_id"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid user id")
+	}
+
+	userID, err := strconv.ParseInt(userIDString, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid user id")
+	}
+
+	user, err := s.userRepo.FindUserById(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	accessToken, err := s.jwtService.GenerateAccessToken(user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken, err := s.jwtService.GenerateRefreshToken(user.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginResult{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
 }

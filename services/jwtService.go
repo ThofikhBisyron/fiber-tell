@@ -103,6 +103,9 @@ func (s *JwtService) ValidateRefreshToken(
 
 			return []byte(s.refreshSecret), nil
 		},
+		jwt.WithValidMethods([]string{
+			jwt.SigningMethodHS256.Alg(),
+		}),
 	)
 
 	if err != nil {

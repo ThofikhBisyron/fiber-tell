@@ -116,3 +116,79 @@ func (c *AuthController) VerifyEmailOtp(
 		"user":    result.User,
 	})
 }
+
+func (c *AuthController) RefreshTokenUser(
+	ctx fiber.Ctx,
+) error {
+	refreshToken := ctx.Cookies("refresh_token")
+
+	if refreshToken == "" {
+		return ctx.Status(401).JSON(fiber.Map{
+			"message": "Refresh token not found",
+		})
+	}
+
+	result, err := c.authService.RefreshToken(
+		ctx.Context(),
+		refreshToken,
+	)
+
+	if err != nil {
+		return ctx.Status(401).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   15 * 60,
+	})
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+	})
+
+	return ctx.JSON(fiber.Map{
+		"message": "Token refreshed successfully",
+	})
+
+}
+
+func (c *AuthController) Logout(
+	ctx fiber.Ctx,
+) error {
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	return ctx.JSON(fiber.Map{
+		"message": "Logout succesful",
+	})
+}

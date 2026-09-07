@@ -39,4 +39,14 @@ func AuthRouters(
 	rg.Post(
 		"/email/verify", authController.VerifyEmailOtp,
 	)
+
+	rg.Post(
+		"/refresh",
+		authController.RefreshTokenUser,
+	)
+
+	rg.Post(
+		"/logout",
+		authController.Logout,
+	)
 }
