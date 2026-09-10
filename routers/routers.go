@@ -22,4 +22,10 @@ func RouterCombine(
 		db,
 		jwtService,
 	)
+
+	ProfileRouters(
+		app.Group("/profile"),
+		db,
+		jwtService,
+	)
 }
