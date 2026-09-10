@@ -17,12 +17,15 @@ func AuthRouters(
 
 	userRepository := repositories.NewUserRepository(db)
 
+	profileRepository := repositories.NewProfileRepo(db)
+
 	emailOtpRepository := repositories.NewOTPRepo(db)
 
 	emailService := services.NewEmailService()
 
 	authService := services.NewAuthService(
 		userRepository,
+		profileRepository,
 		emailOtpRepository,
 		emailService,
 		jwtService,

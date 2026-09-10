@@ -19,6 +19,7 @@ type LoginResult struct {
 }
 type AuthService struct {
 	userRepo     *repositories.UserRepo
+	profileRepo  *repositories.ProfileRepo
 	emailOtpRepo *repositories.OTPRepo
 	emailService *EmailService
 	jwtService   *JwtService
@@ -26,12 +27,14 @@ type AuthService struct {
 
 func NewAuthService(
 	userRepo *repositories.UserRepo,
+	profileRepo *repositories.ProfileRepo,
 	emailOtpRepo *repositories.OTPRepo,
 	emailService *EmailService,
 	jwtService *JwtService,
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
+		profileRepo:  profileRepo,
 		emailOtpRepo: emailOtpRepo,
 		emailService: emailService,
 		jwtService:   jwtService,
@@ -140,6 +143,15 @@ func (s *AuthService) VerifyOtp(
 		user, err = s.userRepo.CreateUser(
 			ctx,
 			email,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = s.profileRepo.CreateProfile(
+			ctx,
+			user.Id,
 		)
 
 		if err != nil {

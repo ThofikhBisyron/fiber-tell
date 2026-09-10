@@ -140,8 +140,8 @@ func (c *AuthController) RefreshTokenUser(
 	}
 
 	ctx.Cookie(&fiber.Cookie{
-		Name:     "refresh_token",
-		Value:    result.RefreshToken,
+		Name:     "access_token",
+		Value:    result.AccessToken,
 		HTTPOnly: true,
 		Secure:   false,
 		SameSite: "Lax",
