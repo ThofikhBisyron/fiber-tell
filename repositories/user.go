@@ -85,13 +85,17 @@ func (r *UserRepo) FindUserById(
 		ctx,
 		`SELECT
 		id,
-		email
+		email,
+		created_at,
+		updated_at
 		FROM users
 		WHERE id = $1
 		`, id,
 	).Scan(
 		&user.Id,
 		&user.Email,
+		&user.Created_at,
+		&user.Updated_at,
 	)
 
 	if err != nil {
