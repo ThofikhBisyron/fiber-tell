@@ -12,3 +12,18 @@ type Diaries struct {
 	Created_at time.Time `json:"created_at" form:"created_at"`
 	Updated_at time.Time `json:"updated_at" form:"updated_at"`
 }
+
+type CreateDiary struct {
+	Mood_id int64     `json:"mood_id" form:"mood_id"`
+	Title   string    `json:"title" form:"title"`
+	Content string    `json:"content" form:"content"`
+	Date    time.Time `json:"date" form:"date"`
+}
+
+type UpdateDiary struct {
+	Id      int64     `json:"id"`
+	Mood_id int64     `json:"mood_id" form:"mood_id"`
+	Title   string    `json:"title" form:"title"`
+	Content string    `json:"content" form:"content"`
+	Date    time.Time `json:"date" form:"date"`
+}

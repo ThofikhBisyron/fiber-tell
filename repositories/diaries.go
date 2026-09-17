@@ -43,6 +43,7 @@ func (r *DiaryRepo) CreateDiary(
 		user_id,
 		mood_id,
 		title,
+		content,
 		date,
 		created_at,
 		updated_at
@@ -166,7 +167,7 @@ func (r *DiaryRepo) FindDiariesByMonth(
 	return diaries, nil
 }
 
-func (r *DiaryRepo) FindDIariesByDate(
+func (r *DiaryRepo) FindDiariesByDate(
 	ctx context.Context,
 	user_id int64,
 	date time.Time,
@@ -281,10 +282,10 @@ func (r *DiaryRepo) UpdateDiaryById(
 		`
 		UPDATE diaries
 		SET
-		mood_id = $1
-		title = $2
-		content = $3
-		date = $4
+		mood_id = $1,
+		title = $2,
+		content = $3,
+		date = $4,
 		updated_at = NOW()
 		WHERE id = $5
 		AND user_id = $6

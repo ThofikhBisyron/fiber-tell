@@ -28,4 +28,10 @@ func RouterCombine(
 		db,
 		jwtService,
 	)
+
+	DiaryRouters(
+		app.Group("/diary"),
+		db,
+		jwtService,
+	)
 }
