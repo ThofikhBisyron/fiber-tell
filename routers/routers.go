@@ -34,4 +34,10 @@ func RouterCombine(
 		db,
 		jwtService,
 	)
+
+	StatisticsRouters(
+		app.Group("/statistics"),
+		db,
+		jwtService,
+	)
 }
