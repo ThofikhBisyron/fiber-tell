@@ -40,7 +40,7 @@ func (s *EmailService) SendOtp(
 		"subject": "Go Tell OTP Code",
 		"htmlContent": fmt.Sprintf(
 			`
-			<h2> GG TELL <h2>
+			<h2> GO TELL <h2>
 			<p> Your OTP Code is: <p>
 			<h1>%s</h1>
 			<p>This Code will expire in 5 minutes<p>
