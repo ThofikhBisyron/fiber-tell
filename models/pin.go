@@ -11,9 +11,9 @@ type Pin struct {
 }
 
 type CreatePin struct {
-	Pin_hash string `json:"pin_hash" form:"pin_hash"`
+	Pin string `json:"pin" form:"pin"`
 }
 
 type VerifyPin struct {
-	Pin_hash string `json:"pin_hash" form:"pin_hash"`
+	Pin string `json:"pin" form:"pin"`
 }

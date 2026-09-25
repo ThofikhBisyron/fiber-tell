@@ -40,4 +40,10 @@ func RouterCombine(
 		db,
 		jwtService,
 	)
+
+	PinRouters(
+		app.Group("/settings"),
+		db,
+		jwtService,
+	)
 }
