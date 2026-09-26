@@ -1,6 +1,7 @@
 package routers
 
 import (
+	"os"
 	"tell-be/controllers"
 	"tell-be/repositories"
 	"tell-be/services"
@@ -19,12 +20,21 @@ func AuthRouters(
 
 	profileRepository := repositories.NewProfileRepo(db)
 
+	authRepository := repositories.NewAuthRepository(db)
+
 	emailOtpRepository := repositories.NewOTPRepo(db)
 
 	emailService := services.NewEmailService()
 
+	googleService := services.NewGoogleService(
+		os.Getenv("GOOGLE_CLIENT_ID"),
+		os.Getenv("GOOGLE_CLIENT_SECRET"),
+		os.Getenv("GOOGLE_REDIRECT_URL"),
+	)
+
 	authService := services.NewAuthService(
 		userRepository,
+		authRepository,
 		profileRepository,
 		emailOtpRepository,
 		emailService,
@@ -33,6 +43,7 @@ func AuthRouters(
 
 	authController := controllers.NewAuthController(
 		authService,
+		googleService,
 	)
 
 	rg.Post(
@@ -52,4 +63,7 @@ func AuthRouters(
 		"/logout",
 		authController.Logout,
 	)
+
+	rg.Get("/google", authController.GoogleLogin)
+	rg.Get("/google/callback", authController.GoogleCallback)
 }

@@ -6,18 +6,22 @@ import (
 	"tell-be/services"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
 
 type AuthController struct {
-	authService *services.AuthService
+	authService   *services.AuthService
+	googleService *services.GoogleService
 }
 
 func NewAuthController(
 	authService *services.AuthService,
+	googleService *services.GoogleService,
 ) *AuthController {
 
 	return &AuthController{
-		authService: authService,
+		authService:   authService,
+		googleService: googleService,
 	}
 }
 
@@ -190,5 +194,103 @@ func (c *AuthController) Logout(
 
 	return ctx.JSON(fiber.Map{
 		"message": "Logout succesful",
+	})
+}
+
+func (c *AuthController) GoogleLogin(
+	ctx fiber.Ctx,
+) error {
+	state := uuid.NewString()
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   10 * 60,
+	})
+
+	url := c.googleService.GetAuthURL(state)
+
+	return ctx.Redirect().To(url)
+}
+
+func (c *AuthController) GoogleCallback(
+	ctx fiber.Ctx,
+) error {
+	state := ctx.Query("state")
+	code := ctx.Query("code")
+
+	if state == "" || code == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid Google OAuth callback",
+		})
+	}
+
+	oauthState := ctx.Cookies("oauth_state")
+
+	if oauthState == "" || oauthState != state {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid OAuth state",
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	googleUser, err := c.googleService.GetUser(
+		ctx.Context(),
+		code,
+	)
+
+	if err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	result, err := c.authService.LoginWithGoogle(
+		ctx.Context(),
+		googleUser,
+	)
+
+	if err != nil {
+		return ctx.Status(500).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    result.AccessToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   15 * 60,
+	})
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+	})
+
+	return ctx.JSON(fiber.Map{
+		"message": "Google login successful",
+		"user":    result.User,
 	})
 }

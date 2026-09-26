@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"strconv"
@@ -10,6 +11,8 @@ import (
 	"tell-be/models"
 	"tell-be/repositories"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type LoginResult struct {
@@ -19,6 +22,7 @@ type LoginResult struct {
 }
 type AuthService struct {
 	userRepo     *repositories.UserRepo
+	authRepo     *repositories.AuthRepo
 	profileRepo  *repositories.ProfileRepo
 	emailOtpRepo *repositories.OTPRepo
 	emailService *EmailService
@@ -27,6 +31,7 @@ type AuthService struct {
 
 func NewAuthService(
 	userRepo *repositories.UserRepo,
+	authRepo *repositories.AuthRepo,
 	profileRepo *repositories.ProfileRepo,
 	emailOtpRepo *repositories.OTPRepo,
 	emailService *EmailService,
@@ -34,6 +39,7 @@ func NewAuthService(
 ) *AuthService {
 	return &AuthService{
 		userRepo:     userRepo,
+		authRepo:     authRepo,
 		profileRepo:  profileRepo,
 		emailOtpRepo: emailOtpRepo,
 		emailService: emailService,
@@ -161,21 +167,7 @@ func (s *AuthService) VerifyOtp(
 
 	fmt.Println("Login user:", user.Id)
 
-	accessToken, err := s.jwtService.GenerateAccessToken(user.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := s.jwtService.GenerateRefreshToken(user.Id)
-	if err != nil {
-		return nil, err
-	}
-
-	return &LoginResult{
-		User:         user,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-	}, nil
+	return s.generateLoginResult(user)
 	// TODO:
 	// Generate JWT access token
 	// Generate JWT refresh token
@@ -222,4 +214,126 @@ func (s *AuthService) RefreshToken(
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 	}, nil
+}
+
+func (s *AuthService) generateLoginResult(
+	user models.User,
+) (*LoginResult, error) {
+
+	accessToken, err := s.jwtService.GenerateAccessToken(
+		user.Id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.jwtService.GenerateRefreshToken(
+		user.Id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginResult{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *AuthService) LoginWithGoogle(
+	ctx context.Context,
+	googleUser *GoogleUser,
+) (*LoginResult, error) {
+	if googleUser == nil {
+		return nil, fmt.Errorf("google user not found")
+	}
+
+	if googleUser.ID == "" {
+		return nil, fmt.Errorf("google user id not found")
+	}
+
+	googleUser.Email = strings.ToLower(
+		strings.TrimSpace(googleUser.Email),
+	)
+
+	if googleUser.Email == "" {
+		return nil, fmt.Errorf("google email not found")
+	}
+
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"google",
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("google provider not found")
+	}
+
+	userId, err := s.authRepo.FindUserByProvider(
+		ctx,
+		providerId,
+		googleUser.ID,
+	)
+
+	if err == nil {
+		user, err := s.userRepo.FindUserById(
+			ctx,
+			userId,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("user not found")
+		}
+
+		return s.generateLoginResult(user)
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	user, err := s.userRepo.FindUserByEmail(
+		ctx,
+		googleUser.Email,
+	)
+
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+
+		user, err := s.userRepo.CreateUser(
+			ctx,
+			googleUser.Email,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = s.profileRepo.CreateProfile(
+			ctx,
+			user.Id,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = s.authRepo.CreateUserAuth(
+		ctx,
+		user.Id,
+		providerId,
+		googleUser.ID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return s.generateLoginResult(user)
 }
