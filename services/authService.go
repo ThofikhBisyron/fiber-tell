@@ -21,12 +21,13 @@ type LoginResult struct {
 	RefreshToken string
 }
 type AuthService struct {
-	userRepo     *repositories.UserRepo
-	authRepo     *repositories.AuthRepo
-	profileRepo  *repositories.ProfileRepo
-	emailOtpRepo *repositories.OTPRepo
-	emailService *EmailService
-	jwtService   *JwtService
+	userRepo        *repositories.UserRepo
+	authRepo        *repositories.AuthRepo
+	profileRepo     *repositories.ProfileRepo
+	emailOtpRepo    *repositories.OTPRepo
+	facebookService *FacebookService
+	emailService    *EmailService
+	jwtService      *JwtService
 }
 
 func NewAuthService(
@@ -34,16 +35,18 @@ func NewAuthService(
 	authRepo *repositories.AuthRepo,
 	profileRepo *repositories.ProfileRepo,
 	emailOtpRepo *repositories.OTPRepo,
+	facebookService *FacebookService,
 	emailService *EmailService,
 	jwtService *JwtService,
 ) *AuthService {
 	return &AuthService{
-		userRepo:     userRepo,
-		authRepo:     authRepo,
-		profileRepo:  profileRepo,
-		emailOtpRepo: emailOtpRepo,
-		emailService: emailService,
-		jwtService:   jwtService,
+		userRepo:        userRepo,
+		authRepo:        authRepo,
+		profileRepo:     profileRepo,
+		emailOtpRepo:    emailOtpRepo,
+		facebookService: facebookService,
+		emailService:    emailService,
+		jwtService:      jwtService,
 	}
 }
 
@@ -336,4 +339,98 @@ func (s *AuthService) LoginWithGoogle(
 	}
 
 	return s.generateLoginResult(user)
+}
+
+func (s *AuthService) LoginWithFacebook(
+	ctx context.Context,
+	facebookUser *FacebookUser,
+) (*LoginResult, error) {
+
+	if facebookUser == nil {
+		return nil, fmt.Errorf("facebook user not found")
+	}
+
+	if facebookUser.ID == "" {
+		return nil, fmt.Errorf("facebook user id not found")
+	}
+
+	facebookUser.Email = strings.ToLower(
+		strings.TrimSpace(facebookUser.Email),
+	)
+
+	if facebookUser.Email == "" {
+		return nil, fmt.Errorf("facebook email not found")
+	}
+
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"facebook",
+	)
+
+	if err != nil {
+		return nil, fmt.Errorf("facebook provider not found")
+	}
+
+	userId, err := s.authRepo.FindUserByProvider(
+		ctx,
+		providerId,
+		facebookUser.ID,
+	)
+
+	if err == nil {
+		user, err := s.userRepo.FindUserById(
+			ctx,
+			userId,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("user not found")
+		}
+
+		return s.generateLoginResult(user)
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	user, err := s.userRepo.FindUserByEmail(
+		ctx,
+		facebookUser.Email,
+	)
+
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+		user, err = s.userRepo.CreateUser(
+			ctx,
+			facebookUser.Email,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = s.profileRepo.CreateProfile(
+			ctx,
+			user.Id,
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = s.authRepo.CreateUserAuth(
+		ctx,
+		user.Id,
+		providerId,
+		facebookUser.ID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return s.generateLoginResult(user)
+
 }

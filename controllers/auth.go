@@ -10,18 +10,21 @@ import (
 )
 
 type AuthController struct {
-	authService   *services.AuthService
-	googleService *services.GoogleService
+	authService     *services.AuthService
+	googleService   *services.GoogleService
+	facebookService *services.FacebookService
 }
 
 func NewAuthController(
 	authService *services.AuthService,
 	googleService *services.GoogleService,
+	facebookService *services.FacebookService,
 ) *AuthController {
 
 	return &AuthController{
-		authService:   authService,
-		googleService: googleService,
+		authService:     authService,
+		googleService:   googleService,
+		facebookService: facebookService,
 	}
 }
 
@@ -291,6 +294,104 @@ func (c *AuthController) GoogleCallback(
 
 	return ctx.JSON(fiber.Map{
 		"message": "Google login successful",
+		"user":    result.User,
+	})
+}
+
+func (c *AuthController) FacebookLogin(
+	ctx fiber.Ctx,
+) error {
+	state := uuid.NewString()
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   10 * 60,
+	})
+
+	url := c.facebookService.GetAuthURL(state)
+
+	return ctx.Redirect().To(url)
+}
+
+func (c *AuthController) FacebookCallback(
+	ctx fiber.Ctx,
+) error {
+	state := ctx.Query("state")
+	code := ctx.Query("code")
+
+	if state == "" || code == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid Facebook OAuth callback",
+		})
+	}
+
+	oauthState := ctx.Cookies("oauth_state")
+
+	if oauthState == "" || oauthState != state {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid OAuth state",
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	facebookUser, err := c.facebookService.GetUser(
+		ctx.Context(),
+		code,
+	)
+
+	if err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	result, err := c.authService.LoginWithFacebook(
+		ctx.Context(),
+		facebookUser,
+	)
+
+	if err != nil {
+		return ctx.Status(500).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "access_token",
+		Value:    result.AccessToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   15 * 60,
+	})
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    result.RefreshToken,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   30 * 24 * 60 * 60,
+	})
+
+	return ctx.JSON(fiber.Map{
+		"message": "Facebook login successful",
 		"user":    result.User,
 	})
 }
