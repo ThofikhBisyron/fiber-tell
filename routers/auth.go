@@ -44,6 +44,12 @@ func AuthRouters(
 		os.Getenv("FACEBOOK_REDIRECT_URL"),
 	)
 
+	facebookConnectService := services.NewFacebookService(
+		os.Getenv("FACEBOOK_CLIENT_ID"),
+		os.Getenv("FACEBOOK_CLIENT_SECRET"),
+		os.Getenv("FACEBOOK_CONNECT_REDIRECT_URL"),
+	)
+
 	authService := services.NewAuthService(
 		userRepository,
 		authRepository,
@@ -59,6 +65,7 @@ func AuthRouters(
 		googleService,
 		googleConnectService,
 		facebookService,
+		facebookConnectService,
 	)
 
 	rg.Post(
@@ -85,4 +92,7 @@ func AuthRouters(
 	rg.Get("/facebook/callback", authController.FacebookCallback)
 	rg.Get("/google/connect", middlewares.AuthMiddleware(jwtService), authController.GoogleConnect)
 	rg.Get("/google/connect/callback", middlewares.AuthMiddleware(jwtService), authController.GoogleConnectCallback)
+	rg.Get("/facebook/connect", middlewares.AuthMiddleware(jwtService), authController.FacebookConnect)
+	rg.Get("/facebook/connect/callback", middlewares.AuthMiddleware(jwtService), authController.FacebookConnectCallback)
+
 }

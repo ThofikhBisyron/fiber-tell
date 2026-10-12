@@ -149,6 +149,11 @@ func (s *AuthService) VerifyOtp(
 	)
 
 	if err != nil {
+
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return nil, err
+		}
+
 		user, err = s.userRepo.CreateUser(
 			ctx,
 			email,
@@ -308,7 +313,7 @@ func (s *AuthService) LoginWithGoogle(
 			return nil, err
 		}
 
-		user, err := s.userRepo.CreateUser(
+		user, err = s.userRepo.CreateUser(
 			ctx,
 			googleUser.Email,
 		)
