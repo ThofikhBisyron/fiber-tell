@@ -168,7 +168,7 @@ func (s *AuthService) VerifyOtp(
 		}
 	}
 
-	fmt.Println("Login user:", user.Id)
+	// fmt.Println("Login user:", user.Id)
 
 	return s.generateLoginResult(user)
 	// TODO:
@@ -332,6 +332,7 @@ func (s *AuthService) LoginWithGoogle(
 		user.Id,
 		providerId,
 		googleUser.ID,
+		googleUser.Email,
 	)
 
 	if err != nil {
@@ -425,6 +426,7 @@ func (s *AuthService) LoginWithFacebook(
 		user.Id,
 		providerId,
 		facebookUser.ID,
+		facebookUser.Email,
 	)
 
 	if err != nil {
@@ -433,4 +435,242 @@ func (s *AuthService) LoginWithFacebook(
 
 	return s.generateLoginResult(user)
 
+}
+
+func (s *AuthService) ConnectGoogle(
+	ctx context.Context,
+	userId int64,
+	googleUser *GoogleUser,
+) error {
+	if googleUser == nil {
+		return fmt.Errorf("google user not found")
+	}
+
+	if googleUser.ID == "" {
+		return fmt.Errorf("google user id not found")
+	}
+
+	googleUser.Email = strings.ToLower(
+		strings.TrimSpace(googleUser.Email),
+	)
+
+	if googleUser.Email == "" {
+		return fmt.Errorf("google email not found")
+	}
+
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"google",
+	)
+
+	if err != nil {
+		return fmt.Errorf("google provider not found")
+	}
+
+	connectedUserId, err := s.authRepo.FindUserByProvider(
+		ctx,
+		providerId,
+		googleUser.ID,
+	)
+
+	if err == nil {
+		if connectedUserId == userId {
+			return fmt.Errorf("google account already connected")
+		}
+
+		return fmt.Errorf(
+			"google account already connected to another user",
+		)
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	_, err = s.authRepo.FindUserAuthAndProvider(
+		ctx,
+		userId,
+		providerId,
+	)
+
+	if err == nil {
+		return fmt.Errorf("google account already connected")
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	err = s.authRepo.CreateUserAuth(
+		ctx,
+		userId,
+		providerId,
+		googleUser.ID,
+		googleUser.Email,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AuthService) ConnectFacebook(
+	ctx context.Context,
+	userId int64,
+	facebookUser *FacebookUser,
+) error {
+	if facebookUser == nil {
+		return fmt.Errorf("facebook user not found")
+	}
+
+	if facebookUser.ID == "" {
+		return fmt.Errorf("facebook user id not found")
+	}
+
+	facebookUser.Email = strings.ToLower(
+		strings.TrimSpace(facebookUser.Email),
+	)
+
+	if facebookUser.Email == "" {
+		return fmt.Errorf("facebook email not found")
+	}
+
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"facebook",
+	)
+
+	if err != nil {
+		return fmt.Errorf("facebook provider not found")
+	}
+
+	connectedUserId, err := s.authRepo.FindUserByProvider(
+		ctx,
+		providerId,
+		facebookUser.ID,
+	)
+
+	if err == nil {
+		if connectedUserId == userId {
+			return fmt.Errorf("facebook account already connected")
+		}
+
+		return fmt.Errorf(
+			"facebook account already connected to another user",
+		)
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	_, err = s.authRepo.FindUserAuthAndProvider(
+		ctx,
+		userId,
+		providerId,
+	)
+
+	if err == nil {
+		return fmt.Errorf("facebook account already connected")
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+
+	err = s.authRepo.CreateUserAuth(
+		ctx,
+		userId,
+		providerId,
+		facebookUser.ID,
+		facebookUser.Email,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AuthService) DisconnectGoogle(
+	ctx context.Context,
+	user_id int64,
+) error {
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"google",
+	)
+
+	if err != nil {
+		return fmt.Errorf("google provider not found")
+	}
+
+	_, err = s.authRepo.FindUserAuthAndProvider(
+		ctx,
+		user_id,
+		providerId,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("google account not connected")
+		}
+
+		return err
+	}
+
+	err = s.authRepo.DeleteUserAuth(
+		ctx,
+		user_id,
+		providerId,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *AuthService) DisconnectFacebook(
+	ctx context.Context,
+	user_id int64,
+) error {
+	providerId, err := s.authRepo.FindProviderByName(
+		ctx,
+		"facebook",
+	)
+
+	if err != nil {
+		return fmt.Errorf("facebook provider not found")
+	}
+
+	_, err = s.authRepo.FindUserAuthAndProvider(
+		ctx,
+		user_id,
+		providerId,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("facebook account not connected")
+		}
+
+		return err
+	}
+
+	err = s.authRepo.DeleteUserAuth(
+		ctx,
+		user_id,
+		providerId,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

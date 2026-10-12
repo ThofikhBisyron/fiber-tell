@@ -3,6 +3,7 @@ package routers
 import (
 	"os"
 	"tell-be/controllers"
+	"tell-be/middlewares"
 	"tell-be/repositories"
 	"tell-be/services"
 
@@ -31,6 +32,11 @@ func AuthRouters(
 		os.Getenv("GOOGLE_CLIENT_SECRET"),
 		os.Getenv("GOOGLE_REDIRECT_URL"),
 	)
+	googleConnectService := services.NewGoogleService(
+		os.Getenv("GOOGLE_CLIENT_ID"),
+		os.Getenv("GOOGLE_CLIENT_SECRET"),
+		os.Getenv("GOOGLE_CONNECT_REDIRECT_URL"),
+	)
 
 	facebookService := services.NewFacebookService(
 		os.Getenv("FACEBOOK_CLIENT_ID"),
@@ -51,6 +57,7 @@ func AuthRouters(
 	authController := controllers.NewAuthController(
 		authService,
 		googleService,
+		googleConnectService,
 		facebookService,
 	)
 
@@ -76,4 +83,6 @@ func AuthRouters(
 	rg.Get("/google/callback", authController.GoogleCallback)
 	rg.Get("/facebook", authController.FacebookLogin)
 	rg.Get("/facebook/callback", authController.FacebookCallback)
+	rg.Get("/google/connect", middlewares.AuthMiddleware(jwtService), authController.GoogleConnect)
+	rg.Get("/google/connect/callback", middlewares.AuthMiddleware(jwtService), authController.GoogleConnectCallback)
 }

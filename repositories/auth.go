@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"tell-be/models"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -69,6 +70,7 @@ func (r *AuthRepo) CreateUserAuth(
 	user_id int64,
 	provider_id int64,
 	provider_user_id string,
+	provider_email string,
 ) error {
 	_, err := r.db.Exec(
 		ctx,
@@ -76,10 +78,59 @@ func (r *AuthRepo) CreateUserAuth(
 		INSERT INTO user_auth (
 		user_id,
 		provider_id,
-		provider_user_id
+		provider_user_id,
+		provider_email
 		)
-		VALUES ($1, $2, $3)
-		`, user_id, provider_id, provider_user_id,
+		VALUES ($1, $2, $3, $4)
+		`, user_id, provider_id, provider_user_id, provider_email,
+	)
+
+	return err
+}
+
+func (r *AuthRepo) FindUserAuthAndProvider(
+	ctx context.Context,
+	user_id int64,
+	provider_id int64,
+) (models.AuthUserProvider, error) {
+	var auth models.AuthUserProvider
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT 
+		id,
+		user_id,
+		provider_id
+		FROM user_auth
+		WHERE user_id = $1
+		AND provider_id = $2
+		`, user_id, provider_id,
+	).Scan(
+		&auth.Id,
+		&auth.User_id,
+		&auth.Provider_id,
+	)
+
+	if err != nil {
+		return models.AuthUserProvider{}, err
+	}
+
+	return auth, err
+}
+
+func (r *AuthRepo) DeleteUserAuth(
+	ctx context.Context,
+	user_id int64,
+	provider_id int64,
+) error {
+	_, err := r.db.Exec(
+		ctx,
+		`
+		DELETE FROM user_auth
+		WHERE user_id = $1
+		AND provider_id = $2
+		`, user_id, provider_id,
 	)
 
 	return err

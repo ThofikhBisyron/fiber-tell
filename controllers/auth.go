@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"os"
 	"strings"
 	"tell-be/dtos"
 	"tell-be/services"
@@ -10,21 +11,24 @@ import (
 )
 
 type AuthController struct {
-	authService     *services.AuthService
-	googleService   *services.GoogleService
-	facebookService *services.FacebookService
+	authService          *services.AuthService
+	googleService        *services.GoogleService
+	googleConnectService *services.GoogleService
+	facebookService      *services.FacebookService
 }
 
 func NewAuthController(
 	authService *services.AuthService,
 	googleService *services.GoogleService,
+	googleConnectService *services.GoogleService,
 	facebookService *services.FacebookService,
 ) *AuthController {
 
 	return &AuthController{
-		authService:     authService,
-		googleService:   googleService,
-		facebookService: facebookService,
+		authService:          authService,
+		googleService:        googleService,
+		googleConnectService: googleConnectService,
+		facebookService:      facebookService,
 	}
 }
 
@@ -292,10 +296,14 @@ func (c *AuthController) GoogleCallback(
 		MaxAge:   30 * 24 * 60 * 60,
 	})
 
-	return ctx.JSON(fiber.Map{
-		"message": "Google login successful",
-		"user":    result.User,
-	})
+	// return ctx.JSON(fiber.Map{
+	// 	"message": "Google login successful",
+	// 	"user":    result.User,
+	// })
+
+	return ctx.Redirect().To(
+		os.Getenv("FE_URL"),
+	)
 }
 
 func (c *AuthController) FacebookLogin(
@@ -390,8 +398,95 @@ func (c *AuthController) FacebookCallback(
 		MaxAge:   30 * 24 * 60 * 60,
 	})
 
-	return ctx.JSON(fiber.Map{
-		"message": "Facebook login successful",
-		"user":    result.User,
+	return ctx.Redirect().To(
+		os.Getenv("FE_URL"),
+	)
+}
+
+func (c *AuthController) GoogleConnect(
+	ctx fiber.Ctx,
+) error {
+	state := uuid.NewString()
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   10 * 60,
 	})
+
+	url := c.googleConnectService.GetAuthURL(state)
+
+	return ctx.Redirect().To(url)
+}
+
+func (c *AuthController) GoogleConnectCallback(
+	ctx fiber.Ctx,
+) error {
+	state := ctx.Query("state")
+	code := ctx.Query("code")
+
+	if state == "" || code == "" {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid Google OAuth callback",
+		})
+	}
+
+	oauthState := ctx.Cookies("oauth_state")
+
+	if oauthState == "" || oauthState != state {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": "Invalid OAuth state",
+		})
+	}
+
+	ctx.Cookie(&fiber.Cookie{
+		Name:     "oauth_state",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   false,
+		SameSite: "Lax",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	googleUser, err := c.googleConnectService.GetUser(
+		ctx.Context(),
+		code,
+	)
+
+	if err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	userIdValue := ctx.Locals("user_id")
+
+	userId, ok := userIdValue.(int64)
+
+	if !ok {
+		return ctx.Status(401).JSON(fiber.Map{
+			"message": "Invalid user",
+		})
+	}
+
+	err = c.authService.ConnectGoogle(
+		ctx.Context(),
+		userId,
+		googleUser,
+	)
+
+	if err != nil {
+		return ctx.Status(400).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
+	return ctx.Redirect().To(
+		os.Getenv("FE_URL") + "/settings/personaldetails",
+	)
 }
