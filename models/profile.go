@@ -17,3 +17,12 @@ type UpdateProfile struct {
 	Last_name    string `json:"last_name" form:"last_name"`
 	Phone_number string `json:"phone_number" form:"phone_number"`
 }
+
+type JoinEmailAuthProfile struct {
+	Email_user     string  `json:"email_user" form:"email_user"`
+	Email_google   string  `json:"email_google" form:"email_google"`
+	Email_facebook string  `json:"email_facebook" form:"email_facebook"`
+	First_name     *string `json:"first_name" form:"first_name"`
+	Last_name      *string `json:"last_name" form:"last_name"`
+	Phone_number   *string `json:"phone_number" form:"phone_number"`
+}

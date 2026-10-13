@@ -10,3 +10,6 @@ CREATE TABLE user_auth (
 );
 CREATE INDEX idx_user_auth_user_id
 ON user_auth(user_id);
+
+CREATE INDEX idx_user_auth_provider_email 
+ON user_auth(provider_email);

@@ -135,3 +135,53 @@ func (r *AuthRepo) DeleteUserAuth(
 
 	return err
 }
+
+func (r *AuthRepo) FindEmailProfileUserById(
+	ctx context.Context,
+	user_id int64,
+) (models.JoinEmailAuthProfile, error) {
+	var userEmail models.JoinEmailAuthProfile
+
+	err := r.db.QueryRow(
+		ctx,
+		`
+		SELECT
+			u.email AS email_user,
+			COALESCE(
+				MAX(ua.provider_email) FILTER (
+					WHERE up.name = 'google'
+				), ''
+			) AS email_google,
+			COALESCE(
+				MAX(ua.provider_email) FILTER (
+					WHERE up.name = 'facebook'
+				), ''
+			) AS email_facebook,
+			p.first_name,
+			p.last_name,
+			p.phone_number
+		FROM users u
+		INNER JOIN user_auth ua
+			ON u.id = ua.user_id
+		INNER JOIN user_provider up
+			ON ua.provider_id = up.id
+		INNER JOIN profiles p
+			ON u.id = p.user_id
+		WHERE u.id = $1
+		GROUP BY u.id, u.email, p.first_name, p.last_name, p.phone_number;
+		`,
+	).Scan(
+		&userEmail.Email_user,
+		&userEmail.Email_google,
+		&userEmail.Email_facebook,
+		&userEmail.First_name,
+		&userEmail.Last_name,
+		&userEmail.Phone_number,
+	)
+
+	if err != nil {
+		return models.JoinEmailAuthProfile{}, err
+	}
+
+	return userEmail, err
+}

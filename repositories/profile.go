@@ -57,34 +57,47 @@ func (r *ProfileRepo) CreateProfile(
 func (r *ProfileRepo) FindProfileByUserId(
 	ctx context.Context,
 	user_id int64,
-) (models.Profile, error) {
-	var profile models.Profile
+) (models.JoinEmailAuthProfile, error) {
+	var profile models.JoinEmailAuthProfile
 
 	err := r.db.QueryRow(
 		ctx,
 		`SELECT
-		id,
-		user_id,
-		first_name,
-		last_name,
-		phone_number,
-		created_at,
-		updated_at
-		FROM profiles
-		WHERE user_id = ($1)`,
+			u.email AS email_user,
+			COALESCE(
+				MAX(ua.provider_email) FILTER (
+					WHERE up.name = 'google'
+				), ''
+			) AS email_google,
+			COALESCE(
+				MAX(ua.provider_email) FILTER (
+					WHERE up.name = 'facebook'
+				), ''
+			) AS email_facebook,
+			p.first_name,
+			p.last_name,
+			p.phone_number
+		FROM users u
+		INNER JOIN user_auth ua
+			ON u.id = ua.user_id
+		INNER JOIN user_provider up
+			ON ua.provider_id = up.id
+		INNER JOIN profiles p
+			ON u.id = p.user_id
+		WHERE u.id = $1
+		GROUP BY u.id, u.email, p.first_name, p.last_name, p.phone_number;`,
 		user_id,
 	).Scan(
-		&profile.Id,
-		&profile.User_id,
+		&profile.Email_user,
+		&profile.Email_google,
+		&profile.Email_facebook,
 		&profile.First_name,
 		&profile.Last_name,
 		&profile.Phone_number,
-		&profile.Created_at,
-		&profile.Updated_at,
 	)
 
 	if err != nil {
-		return models.Profile{}, err
+		return models.JoinEmailAuthProfile{}, err
 	}
 
 	return profile, err
