@@ -94,5 +94,7 @@ func AuthRouters(
 	rg.Get("/google/connect/callback", middlewares.AuthMiddleware(jwtService), authController.GoogleConnectCallback)
 	rg.Get("/facebook/connect", middlewares.AuthMiddleware(jwtService), authController.FacebookConnect)
 	rg.Get("/facebook/connect/callback", middlewares.AuthMiddleware(jwtService), authController.FacebookConnectCallback)
+	rg.Delete("/google/connect", middlewares.AuthMiddleware(jwtService), authController.DisconnectGoogle)
+	rg.Delete("/facebook/connect", middlewares.AuthMiddleware(jwtService), authController.DisconnectFacebook)
 
 }

@@ -578,3 +578,69 @@ func (c *AuthController) FacebookConnectCallback(
 		os.Getenv("FE_URL") + "/settings/personaldetails",
 	)
 }
+
+func (c *AuthController) DisconnectGoogle(
+	ctx fiber.Ctx,
+) error {
+	userId, ok := ctx.Locals("user_id").(int64)
+
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid user",
+		})
+	}
+
+	err := c.authService.DisconnectGoogle(
+		ctx.Context(),
+		userId,
+	)
+
+	if err != nil {
+		if err.Error() == "Google account not connected" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": err.Error(),
+			})
+		}
+
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to unlink Google account",
+		})
+	}
+
+	return ctx.JSON(fiber.Map{
+		"message": "Google account disconnected successfully",
+	})
+}
+
+func (c *AuthController) DisconnectFacebook(
+	ctx fiber.Ctx,
+) error {
+	userId, ok := ctx.Locals("user_id").(int64)
+
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Invalid user",
+		})
+	}
+
+	err := c.authService.DisconnectFacebook(
+		ctx.Context(),
+		userId,
+	)
+
+	if err != nil {
+		if err.Error() == "Facebook account not connected" {
+			return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"message": err.Error(),
+			})
+		}
+
+		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Failed to unlink Facebook account",
+		})
+	}
+
+	return ctx.JSON(fiber.Map{
+		"message": "Facebook account disconnected successfully",
+	})
+}

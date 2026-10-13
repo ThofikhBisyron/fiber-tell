@@ -621,7 +621,7 @@ func (s *AuthService) DisconnectGoogle(
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("google account not connected")
+			return fmt.Errorf("Google account not connected")
 		}
 
 		return err
@@ -661,7 +661,7 @@ func (s *AuthService) DisconnectFacebook(
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("facebook account not connected")
+			return fmt.Errorf("Facebook account not connected")
 		}
 
 		return err
