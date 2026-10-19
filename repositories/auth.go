@@ -161,11 +161,11 @@ func (r *AuthRepo) FindEmailProfileUserById(
 			p.last_name,
 			p.phone_number
 		FROM users u
-		INNER JOIN user_auth ua
+		LEFT JOIN user_auth ua
 			ON u.id = ua.user_id
-		INNER JOIN user_provider up
+		LEFT JOIN user_provider up
 			ON ua.provider_id = up.id
-		INNER JOIN profiles p
+		LEFT JOIN profiles p
 			ON u.id = p.user_id
 		WHERE u.id = $1
 		GROUP BY u.id, u.email, p.first_name, p.last_name, p.phone_number;
