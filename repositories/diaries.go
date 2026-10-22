@@ -85,7 +85,7 @@ func (r *DiaryRepo) FindRecentDiary(
         updated_at
 		FROM diaries
 		WHERE user_id = $1
-		ORDER BY date DESC, id DESC
+		ORDER BY created_at DESC, id DESC
 		LIMIT 1`, user_id,
 	).Scan(
 		&diary.Id,
