@@ -312,3 +312,83 @@ func (r *DiaryRepo) DeleteDiaryById(
 
 	return err
 }
+
+func (r *DiaryRepo) FindSearchDiary(
+	ctx context.Context,
+	user_id int64,
+	keyword string,
+) ([]models.Diaries, error) {
+	var diaries []models.Diaries
+
+	rows, err := r.db.Query(
+		ctx,
+		`
+		WITH search_query AS (
+            SELECT websearch_to_tsquery('simple', $2) AS query
+        )
+        SELECT
+            d.id,
+            d.user_id,
+            d.mood_id,
+            d.title,
+            d.content,
+            d.date,
+            d.created_at,
+            d.updated_at
+        FROM diaries d
+        CROSS JOIN search_query sq
+        WHERE d.user_id = $1
+          AND (
+              d.search_vector @@ sq.query
+              OR d.title ILIKE '%' || $2 || '%'
+              OR d.content ILIKE '%' || $2 || '%'
+              OR d.title % $2
+              OR d.content % $2
+          )
+        ORDER BY
+            (d.search_vector @@ sq.query) DESC,
+            ts_rank(d.search_vector, sq.query) DESC,
+            GREATEST(
+                similarity(d.title, $2),
+                similarity(d.content, $2)
+            ) DESC,
+            d.created_at DESC,
+            d.id DESC
+        LIMIT 50
+		`, user_id, keyword,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var diary models.Diaries
+
+		err := rows.Scan(
+			&diary.Id,
+			&diary.User_id,
+			&diary.Mood_id,
+			&diary.Title,
+			&diary.Content,
+			&diary.Date,
+			&diary.Created_at,
+			&diary.Updated_at,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		diaries = append(diaries, diary)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return diaries, nil
+}

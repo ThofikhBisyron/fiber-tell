@@ -26,6 +26,8 @@ func DiaryRouters(
 		middlewares.AuthMiddleware(jwtService),
 	)
 
+	middleware.Get("/search", diaryController.GetSearchDiary)
+
 	middleware.Get(
 		"/recent",
 		diaryController.GetRecentDiary,

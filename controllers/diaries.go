@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"strconv"
+	"strings"
 	"tell-be/models"
 	"tell-be/repositories"
 	"time"
@@ -305,4 +306,64 @@ func (c *DiaryController) DeleteDiary(
 	return ctx.JSON(fiber.Map{
 		"message": "Diary deleted successfully",
 	})
+}
+
+func (c *DiaryController) GetSearchDiary(
+	ctx fiber.Ctx,
+) error {
+	user_id, ok := ctx.Locals("user_id").(int64)
+
+	if !ok {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(
+			fiber.Map{
+				"message": "Unauthorized",
+			},
+		)
+	}
+
+	keyword := strings.TrimSpace(ctx.Query("q"))
+
+	if keyword == "" {
+		return ctx.Status(fiber.StatusBadRequest).JSON(
+			fiber.Map{
+				"message": "Search keyword is required",
+			},
+		)
+	}
+
+	if len([]rune(keyword)) < 2 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(
+			fiber.Map{
+				"message": "Search keyword must be at least 2 characters",
+			},
+		)
+	}
+
+	if len([]rune(keyword)) > 100 {
+		return ctx.Status(fiber.StatusBadRequest).JSON(
+			fiber.Map{
+				"message": "Search keyword must not exceed 100 characters",
+			},
+		)
+	}
+
+	diaries, err := c.diaryRepo.FindSearchDiary(
+		ctx.Context(),
+		user_id,
+		keyword,
+	)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(
+			fiber.Map{
+				"message": "Failed to search diaries",
+			},
+		)
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(
+		fiber.Map{
+			"diaries": diaries,
+		},
+	)
 }
