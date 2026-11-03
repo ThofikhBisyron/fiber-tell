@@ -1,0 +1,9 @@
+CREATE TABLE user_settings (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    memory_reminder_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    location_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    in_app_notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
