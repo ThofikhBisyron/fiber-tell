@@ -25,6 +25,7 @@ type AuthService struct {
 	authRepo        *repositories.AuthRepo
 	profileRepo     *repositories.ProfileRepo
 	emailOtpRepo    *repositories.OTPRepo
+	settingRepo     *repositories.SettingRepo
 	facebookService *FacebookService
 	emailService    *EmailService
 	jwtService      *JwtService
@@ -35,6 +36,7 @@ func NewAuthService(
 	authRepo *repositories.AuthRepo,
 	profileRepo *repositories.ProfileRepo,
 	emailOtpRepo *repositories.OTPRepo,
+	settingRepo *repositories.SettingRepo,
 	facebookService *FacebookService,
 	emailService *EmailService,
 	jwtService *JwtService,
@@ -44,6 +46,7 @@ func NewAuthService(
 		authRepo:        authRepo,
 		profileRepo:     profileRepo,
 		emailOtpRepo:    emailOtpRepo,
+		settingRepo:     settingRepo,
 		facebookService: facebookService,
 		emailService:    emailService,
 		jwtService:      jwtService,
@@ -171,6 +174,16 @@ func (s *AuthService) VerifyOtp(
 		if err != nil {
 			return nil, err
 		}
+
+	}
+
+	err = s.settingRepo.CreateUserSetting(
+		ctx,
+		user.Id,
+	)
+
+	if err != nil {
+		return nil, err
 	}
 
 	// fmt.Println("Login user:", user.Id)
@@ -296,6 +309,15 @@ func (s *AuthService) LoginWithGoogle(
 			return nil, fmt.Errorf("user not found")
 		}
 
+		err = s.settingRepo.CreateUserSetting(
+			ctx,
+			user.Id,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
 		return s.generateLoginResult(user)
 	}
 
@@ -338,6 +360,15 @@ func (s *AuthService) LoginWithGoogle(
 		providerId,
 		googleUser.ID,
 		googleUser.Email,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.settingRepo.CreateUserSetting(
+		ctx,
+		user.Id,
 	)
 
 	if err != nil {
@@ -393,6 +424,15 @@ func (s *AuthService) LoginWithFacebook(
 			return nil, fmt.Errorf("user not found")
 		}
 
+		err = s.settingRepo.CreateUserSetting(
+			ctx,
+			user.Id,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
 		return s.generateLoginResult(user)
 	}
 
@@ -424,6 +464,7 @@ func (s *AuthService) LoginWithFacebook(
 		if err != nil {
 			return nil, err
 		}
+
 	}
 
 	err = s.authRepo.CreateUserAuth(
@@ -432,6 +473,15 @@ func (s *AuthService) LoginWithFacebook(
 		providerId,
 		facebookUser.ID,
 		facebookUser.Email,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.settingRepo.CreateUserSetting(
+		ctx,
+		user.Id,
 	)
 
 	if err != nil {

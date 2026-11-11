@@ -19,6 +19,8 @@ func AuthRouters(
 
 	userRepository := repositories.NewUserRepository(db)
 
+	settingRepository := repositories.NewSettingRepo(db)
+
 	profileRepository := repositories.NewProfileRepo(db)
 
 	authRepository := repositories.NewAuthRepository(db)
@@ -55,6 +57,7 @@ func AuthRouters(
 		authRepository,
 		profileRepository,
 		emailOtpRepository,
+		settingRepository,
 		facebookService,
 		emailService,
 		jwtService,
