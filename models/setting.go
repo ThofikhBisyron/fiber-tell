@@ -13,7 +13,7 @@ type Settings struct {
 }
 
 type UpdateSetting struct {
-	Memory_reminder      bool `json:"memory_reminder" form:"memory_reminder"`
-	Location             bool `json:"location" form:"location"`
-	In_app_notifications bool `json:"in_app_notifications" form:"in_app_notifications"`
+	Memory_reminder      *bool `json:"memory_reminder" form:"memory_reminder"`
+	Location             *bool `json:"location" form:"location"`
+	In_app_notifications *bool `json:"in_app_notifications" form:"in_app_notifications"`
 }

@@ -46,4 +46,6 @@ func RouterCombine(
 		db,
 		jwtService,
 	)
+
+	SettingRouters(app.Group("/settings"), db, jwtService)
 }
