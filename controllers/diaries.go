@@ -11,23 +11,29 @@ import (
 )
 
 type DiaryController struct {
-	diaryRepo *repositories.DiaryRepo
+	diaryRepo   *repositories.DiaryRepo
+	notifRepo   *repositories.NotifRepo
+	settingRepo *repositories.SettingRepo
 }
 
 func NewDiaryController(
 	diaryRepo *repositories.DiaryRepo,
+	notifRepo *repositories.NotifRepo,
+	settingRepo *repositories.SettingRepo,
 ) *DiaryController {
 	return &DiaryController{
-		diaryRepo: diaryRepo,
+		diaryRepo:   diaryRepo,
+		notifRepo:   notifRepo,
+		settingRepo: settingRepo,
 	}
 }
 
 func (c *DiaryController) CreateDiary(
 	ctx fiber.Ctx,
 ) error {
-	userId := ctx.Locals("user_id")
+	userId, ok := ctx.Locals("user_id").(int64)
 
-	if userId == nil {
+	if !ok {
 		return ctx.Status(401).JSON(fiber.Map{
 			"message": "Unauthorized",
 		})
@@ -44,7 +50,7 @@ func (c *DiaryController) CreateDiary(
 
 	diary, err := c.diaryRepo.CreateDiary(
 		ctx.Context(),
-		userId.(int64),
+		userId,
 		input.Mood_id,
 		input.Title,
 		input.Content,
@@ -55,6 +61,26 @@ func (c *DiaryController) CreateDiary(
 		return ctx.Status(500).JSON(fiber.Map{
 			"message": "Failed to create diary",
 		})
+	}
+
+	settings, err := c.settingRepo.FindUserSettings(
+		ctx.Context(),
+		userId,
+	)
+	if err == nil && settings.In_app_notifications {
+
+		notification := models.Notification{
+			User_id:      userId,
+			Type:         "diary_created",
+			Title:        "Diary Created",
+			Message:      "Your diary has been successfully created.",
+			Reference_id: &diary.Id,
+		}
+
+		_, err = c.notifRepo.CreateNotification(
+			ctx.Context(),
+			notification,
+		)
 	}
 
 	return ctx.Status(201).JSON(fiber.Map{

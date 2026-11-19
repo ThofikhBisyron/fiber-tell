@@ -16,9 +16,13 @@ func DiaryRouters(
 	jwtService *services.JwtService,
 ) {
 	diaryRepository := repositories.NewDiaryRepo(db)
+	notifRepository := repositories.NewNotifRepo(db)
+	settingRepository := repositories.NewSettingRepo(db)
 
 	diaryController := controllers.NewDiaryController(
 		diaryRepository,
+		notifRepository,
+		settingRepository,
 	)
 
 	middleware := rg.Group(

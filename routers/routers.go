@@ -48,4 +48,5 @@ func RouterCombine(
 	)
 
 	SettingRouters(app.Group("/settings"), db, jwtService)
+	NotifRouters(app.Group("/notifications"), db, jwtService)
 }
