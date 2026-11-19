@@ -85,7 +85,7 @@ func (r *SettingRepo) UpdateUserSettings(
 		SET
 		memory_reminder = COALESCE($2, memory_reminder),
 		location = COALESCE($3, location),
-		in_app_notifications = = COALESCE($4, in_app_notifications),
+		in_app_notifications = COALESCE($4, in_app_notifications),
 		updated_at = NOW()
 		WHERE user_id = $1
 		RETURNING
@@ -96,8 +96,6 @@ func (r *SettingRepo) UpdateUserSettings(
 		in_app_notifications,
 		created_at,
 		updated_at
-		FROM user_settings
-		WHERE user_id = $1
 		`,
 		user_id,
 		req.Memory_reminder,
