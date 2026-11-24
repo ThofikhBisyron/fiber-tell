@@ -41,4 +41,6 @@ func StatisticsRouters(
 		statController.GetDiaryByMonth,
 	)
 
+	middleware.Get("/", statController.GetStatistics)
+
 }
