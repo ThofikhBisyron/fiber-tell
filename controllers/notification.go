@@ -21,7 +21,6 @@ func NewNotificationController(
 	}
 }
 
-// GET /notifications
 func (c *NotificationController) GetNotifications(
 	ctx fiber.Ctx,
 ) error {
@@ -90,7 +89,6 @@ func (c *NotificationController) GetNotifications(
 	)
 }
 
-// GET /notifications/unread/count
 func (c *NotificationController) GetUnreadCount(
 	ctx fiber.Ctx,
 ) error {
@@ -124,7 +122,6 @@ func (c *NotificationController) GetUnreadCount(
 	)
 }
 
-// PATCH /notifications/:id/read
 func (c *NotificationController) MarkAsRead(
 	ctx fiber.Ctx,
 ) error {
@@ -181,7 +178,6 @@ func (c *NotificationController) MarkAsRead(
 	)
 }
 
-// PATCH /notifications/read-all
 func (c *NotificationController) MarkAllAsRead(
 	ctx fiber.Ctx,
 ) error {
@@ -215,7 +211,6 @@ func (c *NotificationController) MarkAllAsRead(
 	)
 }
 
-// DELETE /notifications/:id
 func (c *NotificationController) DeleteNotification(
 	ctx fiber.Ctx,
 ) error {

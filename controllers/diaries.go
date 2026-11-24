@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"strconv"
 	"strings"
 	"tell-be/models"
@@ -67,7 +68,14 @@ func (c *DiaryController) CreateDiary(
 		ctx.Context(),
 		userId,
 	)
-	if err == nil && settings.In_app_notifications {
+
+	if err != nil {
+		log.Printf(
+			"Failed to get user settings for user %d: %v",
+			userId,
+			err,
+		)
+	} else if settings.In_app_notifications {
 
 		notification := models.Notification{
 			User_id:      userId,
@@ -77,10 +85,18 @@ func (c *DiaryController) CreateDiary(
 			Reference_id: &diary.Id,
 		}
 
-		_, err = c.notifRepo.CreateNotification(
+		_, err := c.notifRepo.CreateNotification(
 			ctx.Context(),
 			notification,
 		)
+
+		if err != nil {
+			log.Printf(
+				"Failed to create notification for diary %d: %v",
+				diary.Id,
+				err,
+			)
+		}
 	}
 
 	return ctx.Status(201).JSON(fiber.Map{
@@ -245,9 +261,9 @@ func (c *DiaryController) GetDiaryById(
 func (c *DiaryController) UpdateDiary(
 	ctx fiber.Ctx,
 ) error {
-	userId := ctx.Locals("user_id")
+	userId, ok := ctx.Locals("user_id").(int64)
 
-	if userId == nil {
+	if !ok {
 		return ctx.Status(401).JSON(fiber.Map{
 			"message": "Unauthorized",
 		})
@@ -277,7 +293,7 @@ func (c *DiaryController) UpdateDiary(
 	err = c.diaryRepo.UpdateDiaryById(
 		ctx.Context(),
 		diaryId,
-		userId.(int64),
+		userId,
 		input.Mood_id,
 		input.Title,
 		input.Content,
@@ -290,6 +306,41 @@ func (c *DiaryController) UpdateDiary(
 		})
 	}
 
+	settings, err := c.settingRepo.FindUserSettings(
+		ctx.Context(),
+		userId,
+	)
+
+	if err != nil {
+		log.Printf(
+			"Failed to get user settings for user %d: %v",
+			userId,
+			err,
+		)
+	} else if settings.In_app_notifications {
+
+		notification := models.Notification{
+			User_id:      userId,
+			Type:         "diary_updated",
+			Title:        "Diary Updated",
+			Message:      "Your diary has been successfully updated.",
+			Reference_id: &diaryId,
+		}
+
+		_, err := c.notifRepo.CreateNotification(
+			ctx.Context(),
+			notification,
+		)
+
+		if err != nil {
+			log.Printf(
+				"Failed to create notification for diary %d: %v",
+				diaryId,
+				err,
+			)
+		}
+	}
+
 	return ctx.JSON(fiber.Map{
 		"message": "Diary updated successfully",
 	})
@@ -298,9 +349,9 @@ func (c *DiaryController) UpdateDiary(
 func (c *DiaryController) DeleteDiary(
 	ctx fiber.Ctx,
 ) error {
-	userId := ctx.Locals("user_id")
+	userId, ok := ctx.Locals("user_id").(int64)
 
-	if userId == nil {
+	if !ok {
 		return ctx.Status(401).JSON(fiber.Map{
 			"message": "Unauthorized",
 		})
@@ -321,13 +372,47 @@ func (c *DiaryController) DeleteDiary(
 	err = c.diaryRepo.DeleteDiaryById(
 		ctx.Context(),
 		diaryId,
-		userId.(int64),
+		userId,
 	)
 
 	if err != nil {
 		return ctx.Status(500).JSON(fiber.Map{
 			"message": "Failed to delete diary",
 		})
+	}
+
+	settings, err := c.settingRepo.FindUserSettings(
+		ctx.Context(),
+		userId,
+	)
+
+	if err != nil {
+		log.Printf(
+			"Failed to get user settings for user %d: %v",
+			userId,
+			err,
+		)
+	} else if settings.In_app_notifications {
+		notification := models.Notification{
+			User_id:      userId,
+			Type:         "diary_deleted",
+			Title:        "Diary Deleted",
+			Message:      "Your diary has been successfully deleted.",
+			Reference_id: &diaryId,
+		}
+
+		_, err := c.notifRepo.CreateNotification(
+			ctx.Context(),
+			notification,
+		)
+
+		if err != nil {
+			log.Printf(
+				"Failed to create delete notification for diary %d: %v",
+				diaryId,
+				err,
+			)
+		}
 	}
 	return ctx.JSON(fiber.Map{
 		"message": "Diary deleted successfully",
